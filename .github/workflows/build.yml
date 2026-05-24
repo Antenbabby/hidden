@@ -1,0 +1,51 @@
+name: Build
+
+on:
+  push:
+    branches: [ develop, main, claude/** ]
+  pull_request:
+    branches: [ develop, main ]
+
+jobs:
+  build:
+    name: Build Hidden Bar
+    runs-on: macos-15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Build
+        run: |
+          xcodebuild clean build \
+            -project "Hidden Bar.xcodeproj" \
+            -scheme "Hidden Bar" \
+            -configuration Release \
+            -derivedDataPath Build/DerivedData \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Package app
+        run: |
+          APP_PATH="Build/DerivedData/Build/Products/Release/Hidden Bar.app"
+          if [ -d "$APP_PATH" ]; then
+            ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "Hidden Bar.zip"
+            echo "✅ Packaged Hidden Bar.app -> Hidden Bar.zip"
+          else
+            echo "❌ App not found at $APP_PATH"
+            find Build/DerivedData -name "*.app" -type d 2>/dev/null | head -5
+            exit 1
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Hidden-Bar
+          path: Hidden Bar.zip
+          if-no-files-found: error
